@@ -1,0 +1,12 @@
+[
+{
+  "directory": "/home/julia/dev/shell/build",
+  "command": "/usr/bin/g++    -o CMakeFiles/Shell.dir/src/main.cc.o -c /home/julia/dev/shell/src/main.cc",
+  "file": "/home/julia/dev/shell/src/main.cc"
+},
+{
+  "directory": "/home/julia/dev/shell/build",
+  "command": "/usr/bin/cc    -o CMakeFiles/Shell.dir/src/glad.c.o -c /home/julia/dev/shell/src/glad.c",
+  "file": "/home/julia/dev/shell/src/glad.c"
+}
+]
