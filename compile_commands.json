@@ -8,5 +8,10 @@
   "directory": "/home/julia/dev/shell/build",
   "command": "/usr/bin/cc    -o CMakeFiles/Shell.dir/src/glad.c.o -c /home/julia/dev/shell/src/glad.c",
   "file": "/home/julia/dev/shell/src/glad.c"
+},
+{
+  "directory": "/home/julia/dev/shell/build",
+  "command": "/usr/bin/g++    -o CMakeFiles/Shell.dir/src/shader.cc.o -c /home/julia/dev/shell/src/shader.cc",
+  "file": "/home/julia/dev/shell/src/shader.cc"
 }
 ]

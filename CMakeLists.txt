@@ -4,7 +4,9 @@ project(Shell)
 set(CMAKE_CXX_STANDARD 17)
 add_executable(Shell
     src/main.cc
-    src/glad.c)
+    src/glad.c
+    src/shader.cc
+    src/inputRender.cc)
 target_link_libraries(Shell
     glfw
     )
