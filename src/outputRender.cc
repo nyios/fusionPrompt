@@ -7,11 +7,7 @@
 #include "stb_image.h"
 
 OutputRender::OutputRender(unsigned widthArg, unsigned heightArg) : 
-    width{widthArg}, height{heightArg}, 
-    vertices{-1.0f,  1.0f, 0.1f, 0.0f,
-        -1.0f,  0.93f, 0.1f, 0.1f,
-        -1.025f,  0.93f, 0.0f, 0.1f,
-        -1.025f,  1.0f, 0.0f, 0.0f} {
+    width{widthArg}, height{heightArg} {
             // set host and user name
             char hostname[HOST_NAME_MAX];
             char username[LOGIN_NAME_MAX];
@@ -86,7 +82,7 @@ void OutputRender::GPUSetup() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     // load image, create texture and generate mipmaps
     int width, height, nrChannels;
-    unsigned char *data = stbi_load("../textures/font.png", &width, &height, &nrChannels, 4);
+    unsigned char *data = stbi_load("../textures/font2.png", &width, &height, &nrChannels, 4);
     std::cout << "loaded texture " << nrChannels << std::endl;
     if (data) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
@@ -99,24 +95,24 @@ void OutputRender::GPUSetup() {
     stbi_image_free(data);
 }
 
-void OutputRender::renderString(int width, int height) {
+void OutputRender::renderString(float character_width, float character_height) {
     for (auto &c : input) {
         // set position attribute correctly
         // line break: go to beginning of line again but one lower
         if (c == 10) {
             vertices[0] = -1.0f;
             vertices[4] = -1.0f;
-            vertices[8] = -1.025f;
-            vertices[12] = -1.025f;
-            vertices[1] -= 0.075;
-            vertices[5] -= 0.075;
-            vertices[9] -= 0.075;
-            vertices[13] -= 0.075;
+            vertices[8] = -1.0f - character_width;
+            vertices[12] = -1.0f - character_width;
+            vertices[1] -= character_height;
+            vertices[5] -= character_height;
+            vertices[9] -= character_height;
+            vertices[13] -= character_height;
         } else {
-            vertices[0] += 0.025;
-            vertices[4] += 0.025;
-            vertices[8] += 0.025;
-            vertices[12] += 0.025;
+            vertices[0] += character_width;
+            vertices[4] += character_width;
+            vertices[8] += character_width;
+            vertices[12] += character_width;
         }
         // space character, nothing to draw
         if (c == 32)
@@ -182,16 +178,18 @@ void OutputRender::renderInput() {
     //render loop
     while(!glfwWindowShouldClose(window)) {
         //reset vertices to start in upper left corner
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height);
+        float character_width = 28.0f / width;
+        float character_height = 66.0f / height;
         this->vertices = {
             -1.0f,  1.0f, 0.1f, 0.0f,
-            -1.0f,  0.93f, 0.1f, 0.1f,
-            -1.025f,  0.93f, 0.0f, 0.1f,
-            -1.025f,  1.0f, 0.0f, 0.0f
+            -1.0f,  1.0f - character_height, 0.1f, 0.1f,
+            -1.0f - character_width,  1.0f - character_height, 0.0f, 0.1f,
+            -1.0f - character_width,  1.0f, 0.0f, 0.0f
         };
-        int width, height;
-        glfwGetWindowSize(window, &width, &height);
         glClear(GL_COLOR_BUFFER_BIT);
-        renderString(width, height);
+        renderString(character_width, character_height);
         glfwSwapBuffers(window);
         glfwPollEvents();    
     }

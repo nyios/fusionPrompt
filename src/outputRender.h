@@ -14,7 +14,7 @@ class OutputRender {
     std::array<float, 16> vertices;
     Parser p;
 
-    void renderString(int width, int height);
+    void renderString(float width, float height);
     void GPUSetup();
 
     public:
