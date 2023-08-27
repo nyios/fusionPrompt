@@ -1,10 +1,27 @@
 #include <iostream>
-#include "inputRender.h"
+#include <unistd.h>
+#include <limits.h>
+#include <filesystem>
+#include "outputRender.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-InputRender::InputRender(unsigned widthArg, unsigned heightArg) : 
-    width{widthArg}, height{heightArg} {
+OutputRender::OutputRender(unsigned widthArg, unsigned heightArg) : 
+    width{widthArg}, height{heightArg}, 
+    vertices{-1.0f,  1.0f, 0.1f, 0.0f,
+        -1.0f,  0.93f, 0.1f, 0.1f,
+        -1.025f,  0.93f, 0.0f, 0.1f,
+        -1.025f,  1.0f, 0.0f, 0.0f} {
+            // set host and user name
+            char hostname[HOST_NAME_MAX];
+            char username[LOGIN_NAME_MAX];
+            gethostname(hostname, HOST_NAME_MAX);
+            getlogin_r(username, LOGIN_NAME_MAX);
+            std::string host{hostname};
+            std::string user{username};
+            // TODO maybe use stringbuilder
+            preamble = user + "@" + host + ":" + std::filesystem::current_path().string() + "$ ";
+            input = preamble;
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -12,17 +29,26 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 }
 
 void character_callback(GLFWwindow* window, unsigned int codepoint) {
-    reinterpret_cast<InputRender*>(glfwGetWindowUserPointer(window))->input.push_back((char) codepoint);
+    auto renderer = reinterpret_cast<OutputRender*>(glfwGetWindowUserPointer(window));
+    renderer->input.push_back((char) codepoint);
 }
 
-void InputRender::processInput(GLFWwindow *window) {
-    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    auto renderer = reinterpret_cast<OutputRender*>(glfwGetWindowUserPointer(window));
+    if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
+        renderer->input.push_back('\n');
+        renderer->input.append(renderer->p.getOutputString());
+        renderer->input.append(renderer->preamble);
+    } else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
+    } else if (key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS) {
+        if (!(renderer->input == renderer->preamble || 
+                renderer->input.substr(renderer->input.rfind('\n') + 1) == renderer->preamble))
+            renderer->input.pop_back();
     }
 }
 
-//TODO make vertices an attribute
-void InputRender::GPUSetup(float vertices[16]) {
+void OutputRender::GPUSetup() {
     unsigned VAO, VBO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -31,7 +57,7 @@ void InputRender::GPUSetup(float vertices[16]) {
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 16, vertices, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 16, vertices.data(), GL_DYNAMIC_DRAW);
 
     // we want to render quads
     unsigned int indices[] = {
@@ -73,14 +99,28 @@ void InputRender::GPUSetup(float vertices[16]) {
     stbi_image_free(data);
 }
 
-// TODO make vertices a std::array
-void InputRender::renderString(float vertices[16]) {
+void OutputRender::renderString(int width, int height) {
     for (auto &c : input) {
         // set position attribute correctly
-        vertices[0] += 0.025;
-        vertices[4] += 0.025;
-        vertices[8] += 0.025;
-        vertices[12] += 0.025;
+        // line break: go to beginning of line again but one lower
+        if (c == 10) {
+            vertices[0] = -1.0f;
+            vertices[4] = -1.0f;
+            vertices[8] = -1.025f;
+            vertices[12] = -1.025f;
+            vertices[1] -= 0.075;
+            vertices[5] -= 0.075;
+            vertices[9] -= 0.075;
+            vertices[13] -= 0.075;
+        } else {
+            vertices[0] += 0.025;
+            vertices[4] += 0.025;
+            vertices[8] += 0.025;
+            vertices[12] += 0.025;
+        }
+        // space character, nothing to draw
+        if (c == 32)
+            continue;
         // set texture attribute correctly
         uint8_t pos_x = (c - 33) % 10;
         uint8_t pos_y = (c - 33) / 10;
@@ -92,12 +132,12 @@ void InputRender::renderString(float vertices[16]) {
         vertices[11] = 0.1f + pos_y / 10.0f;
         vertices[14] = pos_x / 10.0f;
         vertices[15] = pos_y / 10.0f;
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 16, vertices);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 16, vertices.data());
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
 }
 
-void InputRender::renderInput() {
+void OutputRender::renderInput() {
     // 2 vertex coordinates, 2 texture coordinates
     glfwInit();
     //setup glfw context
@@ -117,6 +157,8 @@ void InputRender::renderInput() {
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     //register callback function the user inputs a character
     glfwSetCharCallback(window, character_callback);
+    //register callback function the user inputs some control character
+    glfwSetKeyCallback(window, key_callback);
     //set render object as user pointer in the window, to access it in the callback function
     glfwSetWindowUserPointer(window, this);
 
@@ -135,29 +177,24 @@ void InputRender::renderInput() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
     glClearColor(0.0f, 0.05f, 0.2f, 1.0f);
-    float vertices[] = {
-        -1.0f,  1.0f, 0.1f, 0.0f,
-        -1.0f,  0.93f, 0.1f, 0.1f,
-        -1.025f,  0.93f, 0.0f, 0.1f,
-        -1.025f,  1.0f, 0.0f, 0.0f
-    };
-    GPUSetup(vertices);
+    GPUSetup();
 
     //render loop
     while(!glfwWindowShouldClose(window)) {
         //reset vertices to start in upper left corner
-        float vertices[] = {
+        this->vertices = {
             -1.0f,  1.0f, 0.1f, 0.0f,
             -1.0f,  0.93f, 0.1f, 0.1f,
             -1.025f,  0.93f, 0.0f, 0.1f,
             -1.025f,  1.0f, 0.0f, 0.0f
         };
-        processInput(window);
+        int width, height;
+        glfwGetWindowSize(window, &width, &height);
         glClear(GL_COLOR_BUFFER_BIT);
-        renderString(vertices);
+        renderString(width, height);
         glfwSwapBuffers(window);
         glfwPollEvents();    
     }
-    std::cout << this->input << std::endl;
+    std::cout << input << std::endl;
     glfwTerminate();
 }

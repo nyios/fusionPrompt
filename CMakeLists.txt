@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.25)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project(Shell)
-set(CMAKE_CXX_STANDARD 17)
 add_executable(Shell
     src/main.cc
     src/glad.c
     src/shader.cc
-    src/inputRender.cc)
+    src/outputRender.cc
+    src/parser.cc)
+target_compile_features(Shell PUBLIC cxx_std_20)
 target_link_libraries(Shell
     glfw
     )

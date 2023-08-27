@@ -1,9 +1,9 @@
 #include "shader.h"
-#include "inputRender.h"
+#include "outputRender.h"
 
 #include <iostream>
 
 int main(){
-    InputRender render{1440, 1080};
+    OutputRender render{1440, 1080};
     render.renderInput();
 }
