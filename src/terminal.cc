@@ -2,11 +2,11 @@
 #include <unistd.h>
 #include <limits.h>
 #include <filesystem>
-#include "outputRender.h"
+#include "terminal.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-OutputRender::OutputRender(unsigned widthArg, unsigned heightArg) : 
+Terminal::Terminal(unsigned widthArg, unsigned heightArg) : 
     width{widthArg}, height{heightArg} {
             // set host and user name
             char hostname[HOST_NAME_MAX];
@@ -25,26 +25,27 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 }
 
 void character_callback(GLFWwindow* window, unsigned int codepoint) {
-    auto renderer = reinterpret_cast<OutputRender*>(glfwGetWindowUserPointer(window));
+    auto renderer = reinterpret_cast<Terminal*>(glfwGetWindowUserPointer(window));
     renderer->input.push_back((char) codepoint);
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    auto renderer = reinterpret_cast<OutputRender*>(glfwGetWindowUserPointer(window));
+    auto renderer = reinterpret_cast<Terminal*>(glfwGetWindowUserPointer(window));
     if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
+        auto input = renderer->input.substr(renderer->input.rfind('\n') + renderer->preamble.size() + 1);
         renderer->input.push_back('\n');
-        renderer->input.append(renderer->p.getOutputString());
+        renderer->input.append(renderer->s.getOutputString(input));
         renderer->input.append(renderer->preamble);
     } else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
-    } else if (key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS) {
+    } else if (key == GLFW_KEY_BACKSPACE && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
         if (!(renderer->input == renderer->preamble || 
                 renderer->input.substr(renderer->input.rfind('\n') + 1) == renderer->preamble))
             renderer->input.pop_back();
     }
 }
 
-void OutputRender::GPUSetup() {
+void Terminal::GPUSetup() {
     unsigned VAO, VBO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -82,7 +83,7 @@ void OutputRender::GPUSetup() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     // load image, create texture and generate mipmaps
     int width, height, nrChannels;
-    unsigned char *data = stbi_load("../textures/font2.png", &width, &height, &nrChannels, 4);
+    unsigned char *data = stbi_load("../textures/font.png", &width, &height, &nrChannels, 4);
     std::cout << "loaded texture " << nrChannels << std::endl;
     if (data) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
@@ -95,7 +96,7 @@ void OutputRender::GPUSetup() {
     stbi_image_free(data);
 }
 
-void OutputRender::renderString(float character_width, float character_height) {
+void Terminal::renderString(float character_width, float character_height) {
     for (auto &c : input) {
         // set position attribute correctly
         // line break: go to beginning of line again but one lower
@@ -133,8 +134,7 @@ void OutputRender::renderString(float character_width, float character_height) {
     }
 }
 
-void OutputRender::renderInput() {
-    // 2 vertex coordinates, 2 texture coordinates
+void Terminal::start() {
     glfwInit();
     //setup glfw context
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);

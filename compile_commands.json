@@ -1,27 +1,27 @@
 [
 {
-  "directory": "/home/julia/dev/shell/build",
-  "command": "/usr/bin/g++   -std=gnu++20 -o CMakeFiles/Shell.dir/src/main.cc.o -c /home/julia/dev/shell/src/main.cc",
-  "file": "/home/julia/dev/shell/src/main.cc"
+  "directory": "/home/julia/projects/fusionPrompt/build",
+  "command": "/usr/bin/g++   -std=gnu++20 -o CMakeFiles/fusionPrompt.dir/src/main.cc.o -c /home/julia/projects/fusionPrompt/src/main.cc",
+  "file": "/home/julia/projects/fusionPrompt/src/main.cc"
 },
 {
-  "directory": "/home/julia/dev/shell/build",
-  "command": "/usr/bin/cc    -o CMakeFiles/Shell.dir/src/glad.c.o -c /home/julia/dev/shell/src/glad.c",
-  "file": "/home/julia/dev/shell/src/glad.c"
+  "directory": "/home/julia/projects/fusionPrompt/build",
+  "command": "/usr/bin/cc    -o CMakeFiles/fusionPrompt.dir/src/glad.c.o -c /home/julia/projects/fusionPrompt/src/glad.c",
+  "file": "/home/julia/projects/fusionPrompt/src/glad.c"
 },
 {
-  "directory": "/home/julia/dev/shell/build",
-  "command": "/usr/bin/g++   -std=gnu++20 -o CMakeFiles/Shell.dir/src/shader.cc.o -c /home/julia/dev/shell/src/shader.cc",
-  "file": "/home/julia/dev/shell/src/shader.cc"
+  "directory": "/home/julia/projects/fusionPrompt/build",
+  "command": "/usr/bin/g++   -std=gnu++20 -o CMakeFiles/fusionPrompt.dir/src/shader.cc.o -c /home/julia/projects/fusionPrompt/src/shader.cc",
+  "file": "/home/julia/projects/fusionPrompt/src/shader.cc"
 },
 {
-  "directory": "/home/julia/dev/shell/build",
-  "command": "/usr/bin/g++   -std=gnu++20 -o CMakeFiles/Shell.dir/src/outputRender.cc.o -c /home/julia/dev/shell/src/outputRender.cc",
-  "file": "/home/julia/dev/shell/src/outputRender.cc"
+  "directory": "/home/julia/projects/fusionPrompt/build",
+  "command": "/usr/bin/g++   -std=gnu++20 -o CMakeFiles/fusionPrompt.dir/src/terminal.cc.o -c /home/julia/projects/fusionPrompt/src/terminal.cc",
+  "file": "/home/julia/projects/fusionPrompt/src/terminal.cc"
 },
 {
-  "directory": "/home/julia/dev/shell/build",
-  "command": "/usr/bin/g++   -std=gnu++20 -o CMakeFiles/Shell.dir/src/parser.cc.o -c /home/julia/dev/shell/src/parser.cc",
-  "file": "/home/julia/dev/shell/src/parser.cc"
+  "directory": "/home/julia/projects/fusionPrompt/build",
+  "command": "/usr/bin/g++   -std=gnu++20 -o CMakeFiles/fusionPrompt.dir/src/shell.cc.o -c /home/julia/projects/fusionPrompt/src/shell.cc",
+  "file": "/home/julia/projects/fusionPrompt/src/shell.cc"
 }
 ]
