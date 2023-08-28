@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <array>
+#include <vector>
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>
 #include "shader.h"
@@ -14,8 +15,10 @@ class Terminal {
     unsigned width;
     /// height of the terminal window
     unsigned height;
-    /// what should currently be displayed in the window
-    std::string input;
+    /// what should currently be displayed in the window, linewise
+    std::vector<std::string> input;
+    /// line of input that is displayed first
+    unsigned line = 0;
     /// vertices array for the current letter that is uploaded to the GPU.
     /// Contains 2D positional coordinates for each of the four vertices 
     /// + 2D texture coordinates for each of the vertices
@@ -54,5 +57,7 @@ class Terminal {
     friend void character_callback(GLFWwindow* window, unsigned int codepoint);
     /// key callback function that is called as soon as any key is pressed
     friend void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    friend void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+
 
 };

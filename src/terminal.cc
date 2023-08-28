@@ -1,12 +1,13 @@
 #include <iostream>
 #include <unistd.h>
+#include <sstream>
 #include "terminal.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 Terminal::Terminal(unsigned widthArg, unsigned heightArg) : 
     width{widthArg}, height{heightArg} {
-            input = s.getPreamble();
+            input.push_back(s.getPreamble());
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -15,24 +16,42 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 
 void character_callback(GLFWwindow* window, unsigned int codepoint) {
     auto renderer = reinterpret_cast<Terminal*>(glfwGetWindowUserPointer(window));
-    renderer->input.push_back((char) codepoint);
+    renderer->input.back().push_back((char) codepoint);
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     auto renderer = reinterpret_cast<Terminal*>(glfwGetWindowUserPointer(window));
+    //enter key has been pressed, process input and display result
     if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
-        auto input = renderer->input.substr(renderer->input.rfind('\n') + renderer->s.getPreamble().size() + 1);
-        renderer->input.push_back('\n');
-        renderer->input.append(renderer->s.getOutputString(input));
-        renderer->input.append(renderer->s.getPreamble());
+        //get command (behind preamble)
+        auto command = renderer->input.back().substr(renderer->s.getPreamble().size());
+        //append result to input that needs to be displayed
+        std::stringstream ss(renderer->s.getOutputString(command));
+        std::string token;
+        while (std::getline(ss, token, '\n')) {
+            renderer->input.push_back(token);
+        }   
+        //start new line with preamble
+        renderer->input.push_back(renderer->s.getPreamble());
+        if (renderer->input.size() > 30)
+            renderer->line = renderer->input.size() - 30;
     } else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     } else if (key == GLFW_KEY_BACKSPACE && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
-        if (!(renderer->input == renderer->s.getPreamble() || 
-                renderer->input.substr(renderer->input.rfind('\n') + 1) == renderer->s.getPreamble()))
-            renderer->input.pop_back();
+        if (!(renderer->input.back() == renderer->s.getPreamble()))
+            renderer->input.back().pop_back();
     }
 }
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    auto renderer = reinterpret_cast<Terminal*>(glfwGetWindowUserPointer(window));
+    if (renderer->input.size() > 30) {
+        int newFirstLine = renderer->line - yoffset;
+        if (newFirstLine >= 0 && newFirstLine < renderer->input.size())
+            renderer->line = newFirstLine;
+    }
+}
+
 
 void Terminal::GPUSetup() {
     unsigned VAO, VBO, EBO;
@@ -86,40 +105,40 @@ void Terminal::GPUSetup() {
 }
 
 void Terminal::renderString(float character_width, float character_height) {
-    for (auto &c : input) {
-        // set position attribute correctly
-        // line break: go to beginning of line again but one lower
-        if (c == 10) {
-            vertices[0] = -1.0f;
-            vertices[4] = -1.0f;
-            vertices[8] = -1.0f - character_width;
-            vertices[12] = -1.0f - character_width;
-            vertices[1] -= character_height;
-            vertices[5] -= character_height;
-            vertices[9] -= character_height;
-            vertices[13] -= character_height;
-        } else {
+    for (unsigned i = this->line; i < this->input.size(); ++i) {
+        auto line = this->input[i];
+        for (auto &c : line) {
+            // set position attribute correctly
             vertices[0] += character_width;
             vertices[4] += character_width;
             vertices[8] += character_width;
             vertices[12] += character_width;
+            // space character, nothing to draw
+            if (c == 32)
+                continue;
+            // set texture attribute correctly
+            uint8_t pos_x = (c - 33) % 10;
+            uint8_t pos_y = (c - 33) / 10;
+            vertices[2] = 0.1f + pos_x / 10.0f;
+            vertices[3] = pos_y / 10.0f;
+            vertices[6] = 0.1f + pos_x / 10.0f;
+            vertices[7] = 0.1f + pos_y / 10.0f;
+            vertices[10] = pos_x / 10.0f;
+            vertices[11] = 0.1f + pos_y / 10.0f;
+            vertices[14] = pos_x / 10.0f;
+            vertices[15] = pos_y / 10.0f;
+            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 16, vertices.data());
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
-        // space character, nothing to draw
-        if (c == 32)
-            continue;
-        // set texture attribute correctly
-        uint8_t pos_x = (c - 33) % 10;
-        uint8_t pos_y = (c - 33) / 10;
-        vertices[2] = 0.1f + pos_x / 10.0f;
-        vertices[3] = pos_y / 10.0f;
-        vertices[6] = 0.1f + pos_x / 10.0f;
-        vertices[7] = 0.1f + pos_y / 10.0f;
-        vertices[10] = pos_x / 10.0f;
-        vertices[11] = 0.1f + pos_y / 10.0f;
-        vertices[14] = pos_x / 10.0f;
-        vertices[15] = pos_y / 10.0f;
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 16, vertices.data());
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        //new line, start at beginning, one lower
+        vertices[0] = -1.0f;
+        vertices[4] = -1.0f;
+        vertices[8] = -1.0f - character_width;
+        vertices[12] = -1.0f - character_width;
+        vertices[1] -= character_height;
+        vertices[5] -= character_height;
+        vertices[9] -= character_height;
+        vertices[13] -= character_height;
     }
 }
 
@@ -140,10 +159,12 @@ void Terminal::start() {
     glfwMakeContextCurrent(window);
     //register callback function when window is resized
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    //register callback function the user inputs a character
+    //register callback function that is called when the user inputs a character
     glfwSetCharCallback(window, character_callback);
-    //register callback function the user inputs some control character
+    //register callback function that is called when the user inputs some control character
     glfwSetKeyCallback(window, key_callback);
+    //register callback function that is called when the user scrolls
+    glfwSetScrollCallback(window, scroll_callback);
     //set render object as user pointer in the window, to access it in the callback function
     glfwSetWindowUserPointer(window, this);
 
@@ -166,8 +187,6 @@ void Terminal::start() {
 
     //render loop
     while(!glfwWindowShouldClose(window)) {
-        // set preamble
-        // TODO maybe use stringbuilder
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
         float character_width = 28.0f / width;
