@@ -14,8 +14,6 @@ class Terminal {
     unsigned width;
     /// height of the terminal window
     unsigned height;
-    /// host, username, current directory that should be displayed
-    std::string preamble;
     /// what should currently be displayed in the window
     std::string input;
     /// vertices array for the current letter that is uploaded to the GPU.

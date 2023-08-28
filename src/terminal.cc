@@ -1,23 +1,12 @@
 #include <iostream>
 #include <unistd.h>
-#include <limits.h>
-#include <filesystem>
 #include "terminal.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 Terminal::Terminal(unsigned widthArg, unsigned heightArg) : 
     width{widthArg}, height{heightArg} {
-            // set host and user name
-            char hostname[HOST_NAME_MAX];
-            char username[LOGIN_NAME_MAX];
-            gethostname(hostname, HOST_NAME_MAX);
-            getlogin_r(username, LOGIN_NAME_MAX);
-            std::string host{hostname};
-            std::string user{username};
-            // TODO maybe use stringbuilder
-            preamble = user + "@" + host + ":" + std::filesystem::current_path().string() + "$ ";
-            input = preamble;
+            input = s.getPreamble();
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -32,15 +21,15 @@ void character_callback(GLFWwindow* window, unsigned int codepoint) {
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     auto renderer = reinterpret_cast<Terminal*>(glfwGetWindowUserPointer(window));
     if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
-        auto input = renderer->input.substr(renderer->input.rfind('\n') + renderer->preamble.size() + 1);
+        auto input = renderer->input.substr(renderer->input.rfind('\n') + renderer->s.getPreamble().size() + 1);
         renderer->input.push_back('\n');
         renderer->input.append(renderer->s.getOutputString(input));
-        renderer->input.append(renderer->preamble);
+        renderer->input.append(renderer->s.getPreamble());
     } else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     } else if (key == GLFW_KEY_BACKSPACE && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
-        if (!(renderer->input == renderer->preamble || 
-                renderer->input.substr(renderer->input.rfind('\n') + 1) == renderer->preamble))
+        if (!(renderer->input == renderer->s.getPreamble() || 
+                renderer->input.substr(renderer->input.rfind('\n') + 1) == renderer->s.getPreamble()))
             renderer->input.pop_back();
     }
 }
@@ -177,11 +166,13 @@ void Terminal::start() {
 
     //render loop
     while(!glfwWindowShouldClose(window)) {
-        //reset vertices to start in upper left corner
+        // set preamble
+        // TODO maybe use stringbuilder
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
         float character_width = 28.0f / width;
         float character_height = 66.0f / height;
+        //reset vertices to start in upper left corner
         this->vertices = {
             -1.0f,  1.0f, 0.1f, 0.0f,
             -1.0f,  1.0f - character_height, 0.1f, 0.1f,
@@ -193,6 +184,6 @@ void Terminal::start() {
         glfwSwapBuffers(window);
         glfwPollEvents();    
     }
-    std::cout << input << std::endl;
+//    std::cout << input << std::endl;
     glfwTerminate();
 }
