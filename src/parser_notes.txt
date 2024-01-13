@@ -1,0 +1,7 @@
+S -> P1 $ | $
+P1 -> word P2
+P2 -> C | = E whitespace P1
+E -> string | word
+C -> whitespace word C | whitespace? T
+T -> \e | '|' whitespace? P1 | R
+R -> digit?< word | digit?> word | digit?<< word | digit?>> word
