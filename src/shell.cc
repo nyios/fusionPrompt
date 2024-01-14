@@ -31,12 +31,12 @@ std::string Shell::getOutputString(const std::string& input){
 }
 
 std::string Shell::execute(const std::string& command) {
-   // auto exe = command.substr(0, command.find(" "));
-   // auto arg = command.substr(command.find(" ") + 1);
+    auto exe = command.substr(0, command.find(" "));
+    auto arg = command.substr(command.find(" ") + 1);
    // std::cout << "command: " << exe << " with arguments: " << arg << " called\n";
     pid_t pid;
     int fd[2];
-    char inbuf[1024];
+    char inbuf[4096];
 
     if (pipe(fd) < 0) {
         perror("pipe");
@@ -49,8 +49,7 @@ std::string Shell::execute(const std::string& command) {
             dup2(fd[1], STDERR_FILENO); 
             close(fd[1]);
             close(fd[0]);
-            //execlp(exe.c_str(), arg.c_str(), (char*) NULL);
-            execlp(command.c_str(), " ", (char*) NULL);
+            execlp(exe.c_str(), exe.c_str(), arg.c_str(), (char*) NULL);
             perror("execlp");
             exit(1);
             break;

@@ -132,16 +132,18 @@ void Terminal::renderString(float character_width, float character_height) {
             glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 16, vertices.data());
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
-        
-        //new line, start at beginning, one lower
-        vertices[0] = -1.0f;
-        vertices[4] = -1.0f;
-        vertices[8] = -1.0f - character_width;
-        vertices[12] = -1.0f - character_width;
-        vertices[1] -= character_height;
-        vertices[5] -= character_height;
-        vertices[9] -= character_height;
-        vertices[13] -= character_height;
+        // only do the new line if something is coming afterwards
+        if (i != this->input.size() - 1) {
+            //new line, start at beginning, one lower
+            vertices[0] = -1.0f;
+            vertices[4] = -1.0f;
+            vertices[8] = -1.0f - character_width;
+            vertices[12] = -1.0f - character_width;
+            vertices[1] -= character_height;
+            vertices[5] -= character_height;
+            vertices[9] -= character_height;
+            vertices[13] -= character_height;
+        }
     }
 }
 
@@ -178,9 +180,10 @@ void Terminal::start() {
         exit(-1);
     }
 
-    // build and compile our shader program
+    // build and compile our shader programs
     Shader sCharacters("../shaderSrc/shader.vs", "../shaderSrc/shaderCharacters.fs"); 
-    glUseProgram(sCharacters.getShaderProgram());
+    // the cursor doesnt need a texture, it is a simple colored quad
+    Shader sCursor("../shaderSrc/shader.vs", "../shaderSrc/shaderCursor.fs"); 
 
     glCullFace(GL_NONE);
     glEnable(GL_BLEND);
@@ -203,10 +206,19 @@ void Terminal::start() {
             -1.0f - character_width,  1.0f, 0.0f, 0.0f
         };
         glClear(GL_COLOR_BUFFER_BIT);
+        glUseProgram(sCharacters.getShaderProgram());
         renderString(character_width, character_height);
+        // render cursor
+        glUseProgram(sCursor.getShaderProgram());
+        vertices[0] += character_width; // set quad one more to the right
+        vertices[4] += character_width;
+        vertices[8] += character_width;
+        vertices[12] += character_width;
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 16, vertices.data());
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        
         glfwSwapBuffers(window);
         glfwPollEvents();    
     }
-//    std::cout << input << std::endl;
     glfwTerminate();
 }
