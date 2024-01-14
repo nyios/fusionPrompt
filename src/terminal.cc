@@ -35,8 +35,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         renderer->input.push_back(renderer->s.getPreamble());
         if (renderer->input.size() > 30)
             renderer->line = renderer->input.size() - 30;
+    // <esc> exists window
     } else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
+    // backspace deletes the last character
     } else if (key == GLFW_KEY_BACKSPACE && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
         if (!(renderer->input.back() == renderer->s.getPreamble()))
             renderer->input.back().pop_back();
@@ -73,7 +75,7 @@ void Terminal::GPUSetup() {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     // position attribute: starting at 0 with stride 4 (2 vertex coordinates, 2 texture coordinates) and offset 0
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     // texture coord attribute
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
@@ -108,7 +110,7 @@ void Terminal::renderString(float character_width, float character_height) {
     for (unsigned i = this->line; i < this->input.size(); ++i) {
         auto line = this->input[i];
         for (auto &c : line) {
-            // set position attribute correctly
+            // set position attribute correctly (only x direction)
             vertices[0] += character_width;
             vertices[4] += character_width;
             vertices[8] += character_width;
@@ -130,6 +132,7 @@ void Terminal::renderString(float character_width, float character_height) {
             glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 16, vertices.data());
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
+        
         //new line, start at beginning, one lower
         vertices[0] = -1.0f;
         vertices[4] = -1.0f;
@@ -176,7 +179,8 @@ void Terminal::start() {
     }
 
     // build and compile our shader program
-    Shader s("../shaderSrc/shader.vs", "../shaderSrc/shader.fs"); 
+    Shader sCharacters("../shaderSrc/shader.vs", "../shaderSrc/shaderCharacters.fs"); 
+    glUseProgram(sCharacters.getShaderProgram());
 
     glCullFace(GL_NONE);
     glEnable(GL_BLEND);

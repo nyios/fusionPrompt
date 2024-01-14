@@ -52,14 +52,12 @@ Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath) {
     checkCompileErrors(fragmentShader, "FRAGMENT");
 
     //link into a shader program
-    unsigned int shaderProgram;
-    shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    checkCompileErrors(shaderProgram, "PROGRAM");
-
-    glUseProgram(shaderProgram);
+    this->sp = glCreateProgram();
+    
+    glAttachShader(sp, vertexShader);
+    glAttachShader(sp, fragmentShader);
+    glLinkProgram(sp);
+    checkCompileErrors(sp, "PROGRAM");
 
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
@@ -87,3 +85,4 @@ void Shader::checkCompileErrors(unsigned int shader, const std::string& type) {
         }
     }
 }
+unsigned Shader::getShaderProgram() {return sp;}

@@ -53,10 +53,11 @@ class Terminal {
          */
         void start();
 
-    /// character callback function that is called as soon as a utf8 character is typed in (no control characters)
+    /// character callback function that is called as soon as a unicode character is typed in (no control characters) !!Interprets the unicode as an 8 bit ascii, thats it!!
     friend void character_callback(GLFWwindow* window, unsigned int codepoint);
     /// key callback function that is called as soon as any key is pressed
     friend void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    /// scroll callback function that is called as soon as the user scrolls
     friend void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
 
