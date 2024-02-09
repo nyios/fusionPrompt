@@ -8,6 +8,7 @@
 Terminal::Terminal(unsigned widthArg, unsigned heightArg) : 
     width{widthArg}, height{heightArg} {
             input.push_back(shell.getPreamble());
+            cursorPosition = shell.getPreamble().size();
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -16,7 +17,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 
 void character_callback(GLFWwindow* window, unsigned int codepoint) {
     auto renderer = reinterpret_cast<Terminal*>(glfwGetWindowUserPointer(window));
-    renderer->input.back().push_back((char) codepoint);
+    renderer->input.back().insert(renderer->cursorPosition, 1, (char) codepoint);
+    renderer->cursorPosition++;
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -33,21 +35,31 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         }   
         //start new line with preamble
         renderer->input.push_back(renderer->shell.getPreamble());
-        if (renderer->input.size() > 30)
+        if (renderer->input.size() > 30) // TODO fix this hardcode
             renderer->line = renderer->input.size() - 30;
+        renderer->cursorPosition = renderer->shell.getPreamble().size();
+
     // <esc> exists window
     } else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     // backspace deletes the last character
     } else if (key == GLFW_KEY_BACKSPACE && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
-        if (!(renderer->input.back() == renderer->shell.getPreamble()))
+        if (!(renderer->input.back() == renderer->shell.getPreamble())) {
             renderer->input.back().pop_back();
+            renderer->cursorPosition--;
+        }
+    } else if (key == GLFW_KEY_LEFT && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
+        if (!(renderer->cursorPosition == renderer->shell.getPreamble().size()))
+            renderer->cursorPosition--;
+    } else if (key == GLFW_KEY_RIGHT && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
+        if (!(renderer->cursorPosition == renderer->input[renderer->input.size()-1].size()))
+            renderer->cursorPosition++;
     }
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
     auto renderer = reinterpret_cast<Terminal*>(glfwGetWindowUserPointer(window));
-    if (renderer->input.size() > 30) {
+    if (renderer->input.size() > 30) { //TODO fix this hardcode
         int newFirstLine = renderer->line - yoffset;
         if (newFirstLine >= 0 && newFirstLine < renderer->input.size())
             renderer->line = newFirstLine;
@@ -106,8 +118,9 @@ void Terminal::GPUSetup() {
     stbi_image_free(data);
 }
 
-void Terminal::renderString(float character_width, float character_height) {
-    for (unsigned i = this->line; i < this->input.size(); ++i) {
+void Terminal::renderString(float character_width, float character_height, Shader& sCharacters, Shader& sCursor) {
+    glUseProgram(sCharacters.getShaderProgram());
+    for (unsigned i = this->line; i < this->input.size() - 1; ++i) {
         auto line = this->input[i];
         for (auto &c : line) {
             // set position attribute correctly (only x direction)
@@ -132,18 +145,74 @@ void Terminal::renderString(float character_width, float character_height) {
             glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 16, vertices.data());
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
-        // only do the new line if something is coming afterwards
-        if (i != this->input.size() - 1) {
-            //new line, start at beginning, one lower
-            vertices[0] = -1.0f;
-            vertices[4] = -1.0f;
-            vertices[8] = -1.0f - character_width;
-            vertices[12] = -1.0f - character_width;
-            vertices[1] -= character_height;
-            vertices[5] -= character_height;
-            vertices[9] -= character_height;
-            vertices[13] -= character_height;
-        }
+        //new line, start at beginning, one lower
+        vertices[0] = -1.0f;
+        vertices[4] = -1.0f;
+        vertices[8] = -1.0f - character_width;
+        vertices[12] = -1.0f - character_width;
+        vertices[1] -= character_height;
+        vertices[5] -= character_height;
+        vertices[9] -= character_height;
+        vertices[13] -= character_height;
+    }
+    auto last_line = this->input[input.size() - 1];
+    for (int i = 0; i < this->cursorPosition; ++i) {
+        auto c = last_line[i];
+        // set position attribute correctly (only x direction)
+        vertices[0] += character_width;
+        vertices[4] += character_width;
+        vertices[8] += character_width;
+        vertices[12] += character_width;
+        // space character, nothing to draw
+        if (c == 32)
+            continue;
+        // set texture attribute correctly
+        uint8_t pos_x = (c - 33) % 10;
+        uint8_t pos_y = (c - 33) / 10;
+        vertices[2] = 0.1f + pos_x / 10.0f;
+        vertices[3] = pos_y / 10.0f;
+        vertices[6] = 0.1f + pos_x / 10.0f;
+        vertices[7] = 0.1f + pos_y / 10.0f;
+        vertices[10] = pos_x / 10.0f;
+        vertices[11] = 0.1f + pos_y / 10.0f;
+        vertices[14] = pos_x / 10.0f;
+        vertices[15] = pos_y / 10.0f;
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 16, vertices.data());
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    }
+    // render cursor
+    glUseProgram(sCursor.getShaderProgram());
+    vertices[0] += character_width; // set quad one more to the right
+    vertices[4] += character_width;
+    vertices[8] += character_width;
+    vertices[12] += character_width;
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 16, vertices.data());
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    glUseProgram(sCharacters.getShaderProgram());
+    for (int i = this->cursorPosition; i < last_line.size(); ++i) {
+        auto c = last_line[i];
+        // set position attribute correctly (only x direction)
+        vertices[0] += character_width;
+        vertices[4] += character_width;
+        vertices[8] += character_width;
+        vertices[12] += character_width;
+        // space character, nothing to draw
+        if (c == 32)
+            continue;
+        // set texture attribute correctly
+        uint8_t pos_x = (c - 33) % 10;
+        uint8_t pos_y = (c - 33) / 10;
+        vertices[2] = 0.1f + pos_x / 10.0f;
+        vertices[3] = pos_y / 10.0f;
+        vertices[6] = 0.1f + pos_x / 10.0f;
+        vertices[7] = 0.1f + pos_y / 10.0f;
+        vertices[10] = pos_x / 10.0f;
+        vertices[11] = 0.1f + pos_y / 10.0f;
+        vertices[14] = pos_x / 10.0f;
+        vertices[15] = pos_y / 10.0f;
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 16, vertices.data());
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
 }
 
@@ -206,16 +275,8 @@ void Terminal::start() {
             -1.0f - character_width,  1.0f, 0.0f, 0.0f
         };
         glClear(GL_COLOR_BUFFER_BIT);
-        glUseProgram(sCharacters.getShaderProgram());
-        renderString(character_width, character_height);
-        // render cursor
-        glUseProgram(sCursor.getShaderProgram());
-        vertices[0] += character_width; // set quad one more to the right
-        vertices[4] += character_width;
-        vertices[8] += character_width;
-        vertices[12] += character_width;
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 16, vertices.data());
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // render string
+        renderString(character_width, character_height, sCharacters, sCursor);
         
         glfwSwapBuffers(window);
         glfwPollEvents();    

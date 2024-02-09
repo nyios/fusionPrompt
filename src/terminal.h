@@ -19,6 +19,8 @@ class Terminal {
     std::vector<std::string> input;
     /// line of input that is displayed first
     unsigned line = 0;
+    /// current position of the cursor (last line)
+    unsigned cursorPosition;
     /// vertices array for the current letter that is uploaded to the GPU.
     /// Contains 2D positional coordinates for each of the four vertices 
     /// + 2D texture coordinates for each of the vertices
@@ -32,7 +34,7 @@ class Terminal {
      * @param width Width of the characters on the current screen
      * @param height Height of the characters
      */
-    void renderString(float width, float height);
+    void renderString(float width, float height, Shader& sCharacters, Shader& sCursor);
 
     /*
      * Binds the VAO and VBO, uploads the vertices to the GPU and loads the texture
