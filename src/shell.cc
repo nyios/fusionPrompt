@@ -110,18 +110,17 @@ std::string Shell::execute(std::vector<std::string>& command) {
         default:
             //parent process
             int status;
-            int n;
+            int n = 0;
             close(fd[1]);
-            while(1) {
-                n = read(fd[0], inbuf, N - 1);
-                inbuf[N-1] = '\0';
-                if (n == -1) {
+            for (int i = read(fd[0], inbuf, N-1); n < N-1; n += i) {
+                if (i == -1) {
                     perror("read");
                     exit(1);
-                } else if (n == 0) {
+                } else if (i == 0) {
                     break;
                 }
             }
+            inbuf[n+1] = '\0';
             close(fd[0]);
             waitpid(pid, &status, 0);
             break;
