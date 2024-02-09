@@ -7,7 +7,7 @@
 
 Terminal::Terminal(unsigned widthArg, unsigned heightArg) : 
     width{widthArg}, height{heightArg} {
-            input.push_back(s.getPreamble());
+            input.push_back(shell.getPreamble());
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -24,15 +24,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     //enter key has been pressed, process input and display result
     if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
         //get command (behind preamble)
-        auto command = renderer->input.back().substr(renderer->s.getPreamble().size());
+        auto command = renderer->input.back().substr(renderer->shell.getPreamble().size());
         //append result to input that needs to be displayed
-        std::stringstream ss(renderer->s.getOutputString(command));
+        std::stringstream ss(renderer->shell.getOutputString(command));
         std::string token;
         while (std::getline(ss, token, '\n')) {
             renderer->input.push_back(token);
         }   
         //start new line with preamble
-        renderer->input.push_back(renderer->s.getPreamble());
+        renderer->input.push_back(renderer->shell.getPreamble());
         if (renderer->input.size() > 30)
             renderer->line = renderer->input.size() - 30;
     // <esc> exists window
@@ -40,7 +40,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         glfwSetWindowShouldClose(window, true);
     // backspace deletes the last character
     } else if (key == GLFW_KEY_BACKSPACE && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
-        if (!(renderer->input.back() == renderer->s.getPreamble()))
+        if (!(renderer->input.back() == renderer->shell.getPreamble()))
             renderer->input.back().pop_back();
     }
 }

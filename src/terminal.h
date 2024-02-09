@@ -24,7 +24,7 @@ class Terminal {
     /// + 2D texture coordinates for each of the vertices
     std::array<float, 16> vertices;
     /// the shell that processes the input after the user has hit enter
-    Shell s;
+    Shell shell;
 
     /*
      * render the current string in input

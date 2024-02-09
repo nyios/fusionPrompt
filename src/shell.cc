@@ -21,22 +21,70 @@ std::string Shell::getPreamble() {
     return this->user + "@" + this->host + ":" + std::filesystem::current_path().string() + "$ ";
 }
 
+std::vector<std::string> Shell::tokenize(const std::string& input) {
+    std::string current;
+    std::vector<std::string> res;
+    bool inQuotation = false;
+    for (auto &c : input) {
+        switch(c) {
+            case '"': 
+                inQuotation = !inQuotation;
+                break;
+            case ' ': 
+                if (inQuotation) {
+                    current.push_back(c);
+                } else if (!current.empty()) {
+                    res.push_back(current);
+                    current.clear();
+                }
+                break;
+            case '\n':
+                if (inQuotation) {
+                    current.push_back(c);
+                } else if (!current.empty()) {
+                    res.push_back(current);
+                    current.clear();
+                }
+                break;
+            default: current.push_back(c);
+        }
+    }
+    if (!current.empty())
+        res.push_back(current);
+    return res;
+}
+
 std::string Shell::getOutputString(const std::string& input){
-    if (input.starts_with("cd ")) {
-        std::filesystem::current_path(input.substr(3)); 
-        return "";
+    std::vector<std::string> tokenInput = tokenize(input);
+    if (this->builtins.contains(tokenInput[0])) {
+    // handle builtins
+        return executeBuiltin(tokenInput);
     } else {
-        return execute(input);
+        return execute(tokenInput);
     }
 }
 
-std::string Shell::execute(const std::string& command) {
-    auto exe = command.substr(0, command.find(" "));
-    auto arg = command.substr(command.find(" ") + 1);
-   // std::cout << "command: " << exe << " with arguments: " << arg << " called\n";
+std::string Shell::executeBuiltin(const std::vector<std::string>& command) {
+    if (command[0] == "cd") {
+        std::filesystem::current_path(command[1]); 
+        return "";
+    } else if (command[0] == "exit") {
+        exit(0);
+    } else {
+        return "sorry didn't implement that yet";
+    }
+}
+
+std::string Shell::execute(std::vector<std::string>& command) {
+    char* argv [command.size() + 1];
+    for (unsigned i = 0; i < command.size(); ++i) {
+        argv[i] = command[i].data();
+    }
+    argv[command.size()] = NULL;
     pid_t pid;
     int fd[2];
-    char inbuf[4096];
+    unsigned N = 4096;
+    char inbuf[N];
 
     if (pipe(fd) < 0) {
         perror("pipe");
@@ -49,7 +97,8 @@ std::string Shell::execute(const std::string& command) {
             dup2(fd[1], STDERR_FILENO); 
             close(fd[1]);
             close(fd[0]);
-            execlp(exe.c_str(), exe.c_str(), arg.c_str(), (char*) NULL);
+            execvp(command[0].c_str(), argv);
+            // execlp should not return, if it does, an error occured
             perror("execlp");
             exit(1);
             break;
@@ -64,7 +113,8 @@ std::string Shell::execute(const std::string& command) {
             int n;
             close(fd[1]);
             while(1) {
-                n = read(fd[0], inbuf, 1024);
+                n = read(fd[0], inbuf, N - 1);
+                inbuf[N-1] = '\0';
                 if (n == -1) {
                     perror("read");
                     exit(1);
