@@ -69,7 +69,10 @@ std::string Shell::executeBuiltin(const std::vector<std::string>& command) {
         std::filesystem::current_path(command[1]); 
         return "";
     } else if (command[0] == "exit") {
-        exit(0);
+        long ret = 0;
+        if (command.size() > 1)
+            ret = strtol(command[1].c_str(), NULL, 10);
+        exit(ret);
     } else {
         return "sorry didn't implement that yet";
     }
@@ -78,8 +81,9 @@ std::string Shell::executeBuiltin(const std::vector<std::string>& command) {
 std::string Shell::execute(std::vector<std::string>& command) {
     char* argv [command.size() + 1];
     for (unsigned i = 0; i < command.size(); ++i) {
-        argv[i] = command[i].data();
+        argv[i] = (char*) command[i].c_str();
     }
+    // argv needs to be null terminated for execvp
     argv[command.size()] = NULL;
     pid_t pid;
     int fd[2];
@@ -96,10 +100,9 @@ std::string Shell::execute(std::vector<std::string>& command) {
             dup2(fd[1], STDOUT_FILENO); 
             dup2(fd[1], STDERR_FILENO); 
             close(fd[1]);
-            close(fd[0]);
             execvp(command[0].c_str(), argv);
-            // execlp should not return, if it does, an error occured
-            perror("execlp");
+            // execvp should not return, if it does, an error occured
+            perror("execvp");
             exit(1);
             break;
         case -1:
@@ -111,16 +114,16 @@ std::string Shell::execute(std::vector<std::string>& command) {
             //parent process
             int status;
             int n = 0;
+            int i = 0;
             close(fd[1]);
-            for (int i = read(fd[0], inbuf, N-1); n < N-1; n += i) {
+            while ((i = read(fd[0], inbuf+n, N-1-n)) != 0) {
                 if (i == -1) {
                     perror("read");
                     exit(1);
-                } else if (i == 0) {
-                    break;
                 }
+                n += i;
             }
-            inbuf[n+1] = '\0';
+            inbuf[n] = '\0';
             close(fd[0]);
             waitpid(pid, &status, 0);
             break;

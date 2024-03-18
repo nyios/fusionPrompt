@@ -29,12 +29,15 @@ class Terminal {
     Shell shell;
 
     /*
-     * render the current string in input
+     * render the current lines in input
      *
      * @param width Width of the characters on the current screen
      * @param height Height of the characters
+     * @param sCharacters The shader program for the characters
+     * @param sCursor The shader program for the cursor
+     * @param colored The location of the color uniform to change the color of the text 
      */
-    void renderString(float width, float height, Shader& sCharacters, Shader& sCursor);
+    void renderString(float width, float height, Shader& sCharacters, Shader& sCursor, int colorLocation);
 
     /*
      * Binds the VAO and VBO, uploads the vertices to the GPU and loads the texture

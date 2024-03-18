@@ -16,53 +16,53 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 }
 
 void character_callback(GLFWwindow* window, unsigned int codepoint) {
-    auto renderer = reinterpret_cast<Terminal*>(glfwGetWindowUserPointer(window));
-    renderer->input.back().insert(renderer->cursorPosition, 1, (char) codepoint);
-    renderer->cursorPosition++;
+    auto terminal = reinterpret_cast<Terminal*>(glfwGetWindowUserPointer(window));
+    terminal->input.back().insert(terminal->cursorPosition, 1, (char) codepoint);
+    terminal->cursorPosition++;
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    auto renderer = reinterpret_cast<Terminal*>(glfwGetWindowUserPointer(window));
+    auto terminal = reinterpret_cast<Terminal*>(glfwGetWindowUserPointer(window));
     //enter key has been pressed, process input and display result
     if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
         //get command (behind preamble)
-        auto command = renderer->input.back().substr(renderer->shell.getPreamble().size());
+        auto command = terminal->input.back().substr(terminal->shell.getPreamble().size());
         //append result to input that needs to be displayed
-        std::stringstream ss(renderer->shell.getOutputString(command));
+        std::stringstream ss(terminal->shell.getOutputString(command));
         std::string token;
         while (std::getline(ss, token, '\n')) {
-            renderer->input.push_back(token);
+            terminal->input.push_back(token);
         }   
         //start new line with preamble
-        renderer->input.push_back(renderer->shell.getPreamble());
-        if (renderer->input.size() > 30) // TODO fix this hardcode
-            renderer->line = renderer->input.size() - 30;
-        renderer->cursorPosition = renderer->shell.getPreamble().size();
+        terminal->input.push_back(terminal->shell.getPreamble());
+        if (terminal->input.size() > 30) // TODO fix this hardcode
+            terminal->line = terminal->input.size() - 30;
+        terminal->cursorPosition = terminal->shell.getPreamble().size();
 
     // <esc> exists window
     } else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     // backspace deletes the last character
     } else if (key == GLFW_KEY_BACKSPACE && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
-        if (!(renderer->input.back() == renderer->shell.getPreamble())) {
-            renderer->input.back().pop_back();
-            renderer->cursorPosition--;
+        if (!(terminal->input.back() == terminal->shell.getPreamble())) {
+            terminal->input.back().pop_back();
+            terminal->cursorPosition--;
         }
     } else if (key == GLFW_KEY_LEFT && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
-        if (!(renderer->cursorPosition == renderer->shell.getPreamble().size()))
-            renderer->cursorPosition--;
+        if (!(terminal->cursorPosition == terminal->shell.getPreamble().size()))
+            terminal->cursorPosition--;
     } else if (key == GLFW_KEY_RIGHT && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
-        if (!(renderer->cursorPosition == renderer->input[renderer->input.size()-1].size()))
-            renderer->cursorPosition++;
+        if (!(terminal->cursorPosition == terminal->input[terminal->input.size()-1].size()))
+            terminal->cursorPosition++;
     }
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    auto renderer = reinterpret_cast<Terminal*>(glfwGetWindowUserPointer(window));
-    if (renderer->input.size() > 30) { //TODO fix this hardcode
-        int newFirstLine = renderer->line - yoffset;
-        if (newFirstLine >= 0 && newFirstLine < renderer->input.size())
-            renderer->line = newFirstLine;
+    auto terminal = reinterpret_cast<Terminal*>(glfwGetWindowUserPointer(window));
+    if (terminal->input.size() > 30) { //TODO fix this hardcode
+        int newFirstLine = terminal->line - yoffset;
+        if (newFirstLine >= 0 && newFirstLine < terminal->input.size())
+            terminal->line = newFirstLine;
     }
 }
 
@@ -118,8 +118,11 @@ void Terminal::GPUSetup() {
     stbi_image_free(data);
 }
 
-void Terminal::renderString(float character_width, float character_height, Shader& sCharacters, Shader& sCursor) {
+void Terminal::renderString(float character_width, float character_height,
+                            Shader &sCharacters, Shader &sCursor,
+                            int colorLocation) {
     glUseProgram(sCharacters.getShaderProgram());
+    glUniform4f(colorLocation, 0.0f, 0.9f, 0.0f, 1.0f);
     for (unsigned i = this->line; i < this->input.size() - 1; ++i) {
         auto line = this->input[i];
         for (auto &c : line) {
@@ -219,8 +222,8 @@ void Terminal::renderString(float character_width, float character_height, Shade
 void Terminal::start() {
     glfwInit();
     //setup glfw context
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     //create window object with specified width, height and name
     GLFWwindow* window = glfwCreateWindow(this->width, this->height, "Shell", NULL, NULL);
@@ -254,6 +257,9 @@ void Terminal::start() {
     // the cursor doesnt need a texture, it is a simple colored quad
     Shader sCursor("../shaderSrc/shader.vs", "../shaderSrc/shaderCursor.fs"); 
 
+    // get location of color uniform
+    int colorLocation = glGetUniformLocation(sCharacters.getShaderProgram(), "color");
+
     glCullFace(GL_NONE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -265,7 +271,7 @@ void Terminal::start() {
     while(!glfwWindowShouldClose(window)) {
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
-        float character_width = 28.0f / width;
+        float character_width = 28.0f / width; //TODO fix these hardcodes
         float character_height = 66.0f / height;
         //reset vertices to start in upper left corner
         this->vertices = {
@@ -276,7 +282,7 @@ void Terminal::start() {
         };
         glClear(GL_COLOR_BUFFER_BIT);
         // render string
-        renderString(character_width, character_height, sCharacters, sCursor);
+        renderString(character_width, character_height, sCharacters, sCursor, colorLocation);
         
         glfwSwapBuffers(window);
         glfwPollEvents();    
